@@ -1,0 +1,45 @@
+version: '3.5'
+services:
+  mariadb-server:
+    image: mariadb:10.6
+    environment:
+      MYSQL_DATABASE: zabbix
+      MYSQL_USER: zabbix
+      MYSQL_PASSWORD: zabbixpass
+      MYSQL_ROOT_PASSWORD: rootpass
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-prootpass"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  zabbix-server:
+    image: zabbix/zabbix-server-mysql:6.4-ubuntu-latest
+    environment:
+      DB_SERVER_HOST: mariadb-server
+      MYSQL_DATABASE: zabbix
+      MYSQL_USER: zabbix
+      MYSQL_PASSWORD: zabbixpass
+    ports:
+      - "10051:10051"
+    depends_on:
+      mariadb-server:
+        condition: service_healthy
+    restart: unless-stopped
+
+  zabbix-web:
+    image: zabbix/zabbix-web-nginx-mysql:6.4-ubuntu-latest
+    environment:
+      DB_SERVER_HOST: mariadb-server
+      MYSQL_DATABASE: zabbix
+      MYSQL_USER: zabbix
+      MYSQL_PASSWORD: zabbixpass
+      ZBX_SERVER_HOST: zabbix-server
+      PHP_TZ: Europe/London
+    ports:
+      - "8080:8080"
+    depends_on:
+      mariadb-server:
+        condition: service_healthy
+    restart: unless-stopped
